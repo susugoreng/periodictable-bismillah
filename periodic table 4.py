@@ -1,7 +1,7 @@
 import streamlit as st
 import random
 
-# Daftar contoh unsur (bisa diperluas)
+# Daftar unsur periodik
 periodic_table = [
     {"name": "hidrogen", "symbol": "H", "number": 1, "group": 1, "period": 1},
     {"name": "helium", "symbol": "He", "number": 2, "group": 18, "period": 1},
@@ -45,7 +45,7 @@ periodic_table = [
     {"name": "zirconium", "symbol": "Zr", "number": 40, "group": 4, "period": 5}
 ]
 
-# Inisialisasi session state jika belum ada
+# Inisialisasi state
 if 'score' not in st.session_state:
     st.session_state.score = 0
 if 'question_num' not in st.session_state:
@@ -54,6 +54,8 @@ if 'current_question' not in st.session_state:
     st.session_state.current_question = None
 if 'feedback' not in st.session_state:
     st.session_state.feedback = ""
+if 'answer_submitted' not in st.session_state:
+    st.session_state.answer_submitted = False
 
 def generate_question():
     element = random.choice(periodic_table)
@@ -63,55 +65,56 @@ def generate_question():
 st.title("🔬 Kuis Tabel Periodik")
 
 if st.session_state.question_num < 5:
-    # Generate a new question if needed
     if st.session_state.current_question is None:
         st.session_state.current_question = generate_question()
+        st.session_state.answer_submitted = False
 
-    # Ensure the current question exists before trying to access it
-    if st.session_state.current_question:
-        q = st.session_state.current_question
-        e = q["element"]
-        q_text = ""
-        correct_answer = ""
+    q = st.session_state.current_question
+    e = q["element"]
+    correct_answer = ""
+    
+    if q["type"] == "symbol":
+        question_text = f"Apa simbol dari unsur '{e['name'].capitalize()}'?"
+        correct_answer = e["symbol"]
+    elif q["type"] == "number":
+        question_text = f"Berapa nomor atom dari '{e['name'].capitalize()}'?"
+        correct_answer = str(e["number"])
+    elif q["type"] == "group":
+        question_text = f"Golongan berapa unsur '{e['name'].capitalize()}'?"
+        correct_answer = str(e["group"])
+    elif q["type"] == "period":
+        question_text = f"Periode berapa unsur '{e['name'].capitalize()}'?"
+        correct_answer = str(e["period"])
 
-        # Check the type of question and set the appropriate question text and correct answer
-        if q["type"] == "symbol":
-            q_text = f"Apa simbol dari unsur '{e['name'].capitalize()}'?"
-            correct_answer = e["symbol"]
-        elif q["type"] == "number":
-            q_text = f"Berapa nomor atom dari '{e['name'].capitalize()}'?"
-            correct_answer = str(e["number"])
-        elif q["type"] == "group":
-            q_text = f"Golongan berapa unsur '{e['name'].capitalize()}'?"
-            correct_answer = str(e["group"])
-        elif q["type"] == "period":
-            q_text = f"Periode berapa unsur '{e['name'].capitalize()}'?"
-            correct_answer = str(e["period"])
+    user_input = st.text_input(question_text, key=f"input_{st.session_state.question_num}")
 
-        user_input = st.text_input(q_text, key=f"question_{st.session_state.question_num}")
+    # Tombol kirim jawaban
+    if st.button("Kirim Jawaban") and not st.session_state.answer_submitted:
+        if user_input.strip().lower() == correct_answer.lower():
+            st.session_state.score += 1
+            st.session_state.feedback = "✅ Benar!"
+        else:
+            st.session_state.feedback = f"❌ Salah. Jawaban yang benar: {correct_answer}"
+        st.session_state.answer_submitted = True
 
-        if st.button("Kirim Jawaban"):
-            if user_input.strip().lower() == correct_answer.lower():
-                st.session_state.score += 1
-                st.session_state.feedback = "✅ Benar!"
-            else:
-                st.session_state.feedback = f"❌ Salah. Jawaban yang benar: {correct_answer}"
+    # Tampilkan feedback
+    st.write(st.session_state.feedback)
 
-            # Proceed to next question and generate a new one
+    # Tombol lanjut jika sudah kirim jawaban
+    if st.session_state.answer_submitted:
+        if st.button("Soal Berikutnya"):
             st.session_state.question_num += 1
-            st.session_state.current_question = None  # Reset the current question for the next one
+            st.session_state.current_question = None
+            st.session_state.feedback = ""
+            st.session_state.answer_submitted = False
 
-# Display the score and feedback
-st.markdown(f"### Skor: {st.session_state.score}/5")
-st.write(st.session_state.feedback)
+    # Skor sementara
+    st.markdown(f"### Skor: {st.session_state.score}/5")
 
-# End of quiz
+# Kuis selesai
 if st.session_state.question_num >= 5:
     st.success(f"🎉 Kuis selesai! Skor akhir kamu: {st.session_state.score}/5")
     if st.button("Main Lagi"):
-        # Reset session state variables
-        for key in ["score", "question_num", "current_question", "feedback"]:
-            if key == "score" or key == "question_num":
-                st.session_state[key] = 0
-            else:
-                st.session_state[key] = None
+        for key in ["score", "question_num", "current_question", "feedback", "answer_submitted"]:
+            if key in st.session_state:
+                del st.session_state[key]
